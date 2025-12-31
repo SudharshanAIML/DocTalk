@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGODB_URI")
-DB_NAME = os.getenv("MONGODB_DB_NAME", "docquery_ai")
+DB_NAME = os.getenv("MONGODB_DB_NAME", "DOCTALK")
 
 if not MONGO_URI:
     raise ValueError("MONGODB_URI not set in environment variables")

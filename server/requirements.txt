@@ -1,0 +1,6 @@
+fastapi uvicorn
+langchain
+langchain_community
+pymongo python-dotenv
+pymongo[srv]==3.12
+langchain_google_genai
