@@ -81,63 +81,56 @@ def load_document_with_langchain(file_path: str, filename: str):
 # UPLOAD DOCUMENT
 
 @router.post("/upload")
-async def upload_documents(
-    files: List[UploadFile] = File(...),
+async def upload_document(
+    file: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id)
 ):
-    uploaded_files = []
-
-    for file in files:
-        filename_lower = file.filename.lower()
-        if not (filename_lower.endswith(".pdf") or filename_lower.endswith(".docx")):
-            raise HTTPException(
-                status_code=400,
-                detail="Only PDF and DOCX files are supported"
-            )
-
-        # Save file
-        temp_file_id = str(uuid.uuid4())
-        file_path = os.path.join(UPLOAD_DIR, f"{temp_file_id}_{file.filename}")
-
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-
-        try:
-            # 🔥 Load using LangChain
-            pages, file_type = load_document_with_langchain(file_path, file.filename)
-        except Exception as e:
-            # Clean up file on error
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to process document: {str(e)}"
-            )
-
-        # Save document metadata
-        doc = insert_document(
-            user_id=user_id,
-            filename=file.filename,
-            file_type=file_type,
-            num_pages=len(pages)
+    filename_lower = file.filename.lower()
+    if not (filename_lower.endswith(".pdf") or filename_lower.endswith(".docx")):
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF and DOCX files are supported"
         )
 
-        # 🔥 Incremental ingestion (LangChain + FAISS)
-        parallel_ingest_document(
-            user_id=user_id,
-            file_id=doc["file_id"],
-            filename=file.filename,
-            extracted_pages=pages
+    # Save file
+    temp_file_id = str(uuid.uuid4())
+    file_path = os.path.join(UPLOAD_DIR, f"{temp_file_id}_{file.filename}")
+
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    try:
+        # 🔥 Load using LangChain
+        pages, file_type = load_document_with_langchain(file_path, file.filename)
+    except Exception as e:
+        # Clean up file on error
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process document: {str(e)}"
         )
 
-        uploaded_files.append({
-            "file_id": doc["file_id"],
-            "filename": file.filename
-        })
+    # Save document metadata
+    doc = insert_document(
+        user_id=user_id,
+        filename=file.filename,
+        file_type=file_type,
+        num_pages=len(pages)
+    )
+
+    # 🔥 Incremental ingestion (LangChain + FAISS)
+    parallel_ingest_document(
+        user_id=user_id,
+        file_id=doc["file_id"],
+        filename=file.filename,
+        extracted_pages=pages
+    )
 
     return {
-        "message": "Files uploaded and indexed successfully",
-        "files": uploaded_files
+        "message": "Document uploaded successfully",
+        "file_id": doc["file_id"],
+        "filename": file.filename
     }
 
 

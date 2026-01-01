@@ -7,14 +7,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MODEL = os.getenv("GEMINI_MODEL")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 
 def get_rag_chain(user_id: str):
     llm = ChatGoogleGenerativeAI(
         model=MODEL,
         temperature=0,
-        google_api_key=os.getenv("GEMINI_API_KEY")
+        google_api_key=GOOGLE_API_KEY
     )
 
     prompt = PromptTemplate(

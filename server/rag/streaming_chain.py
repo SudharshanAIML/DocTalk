@@ -1,6 +1,6 @@
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_classic.chains import RetrievalQA
+from langchain_classic.chains.retrieval_qa.base import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from langchain_core.callbacks import BaseCallbackHandler
 from rag.retriever import get_retriever
@@ -10,6 +10,7 @@ from threading import Thread
 
 load_dotenv()
 MODEL = os.getenv("GEMINI_MODEL", "gemini-pro")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 
 class StreamingCallbackHandler(BaseCallbackHandler):
@@ -29,7 +30,8 @@ def get_streaming_rag_chain(user_id: str):
     llm = ChatGoogleGenerativeAI(
         model=MODEL,
         temperature=0,
-        streaming=True
+        streaming=True,
+        google_api_key=GOOGLE_API_KEY
     )
 
     prompt = PromptTemplate(

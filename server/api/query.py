@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Dict
+from pydantic import BaseModel
 
 from rag.memory_chain import get_conversational_rag_chain
 from rag.streaming_chain import get_streaming_rag_chain, stream_rag_response
@@ -12,20 +13,23 @@ from auth.dependencies import get_current_user_id
 # -------------------------------------------------
 router = APIRouter(prefix="/query", tags=["Query"])
 
-
+# Request model
+class QueryRequest(BaseModel):
+    question: str
 
 # -------------------------------------------------
 # NORMAL QUERY (WITH MEMORY)
 # -------------------------------------------------
 @router.post("/")
 def query_documents(
-    question: str,
+    request: QueryRequest,
     user_id: str = Depends(get_current_user_id)
 ):
     """
     Stateless conversational RAG query.
     Conversation history is passed explicitly.
     """
+    question = request.question
 
     # 1️⃣ Build stateless chain (NO MEMORY INSIDE)
     chain = get_conversational_rag_chain(user_id)
@@ -70,19 +74,20 @@ def query_documents(
         "answer": answer,
         "sources": sources
     }
+
 # -------------------------------------------------
 # STREAMING QUERY (NO MEMORY)
 # -------------------------------------------------
 @router.post("/stream")
 def query_documents_stream(
-    question: str,
+    request: QueryRequest,
     user_id: str = Depends(get_current_user_id)
 ):
     """
     Streams answer token-by-token using Gemini.
     """
     return StreamingResponse(
-        stream_rag_response(user_id, question),
+        stream_rag_response(user_id, request.question),
         media_type="text/event-stream"
     )
 

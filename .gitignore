@@ -1,3 +1,12 @@
 *.env
 /venv/
 *__pycache__/
+FINAL_STATUS.md
+PROJECT_SUMMARY.md
+TROUBLESHOOTING.md
+USER_GUIDE.md
+client/node_modules/
+/server/data/uploads/
+/server/faiss_index
+UI_IMPROVEMENTS.md
+test_simple.html
