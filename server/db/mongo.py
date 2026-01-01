@@ -2,6 +2,7 @@ import os
 import uuid
 from datetime import datetime
 from pymongo import MongoClient, ASCENDING, DESCENDING
+import certifi
 from dotenv import load_dotenv
 
 
@@ -18,7 +19,7 @@ if not MONGO_URI:
 
 # MongoDB Connection
 
-client = MongoClient(MONGO_URI)
+client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
 db = client[DB_NAME]
 
 

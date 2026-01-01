@@ -3,25 +3,16 @@ from fastapi.responses import StreamingResponse
 from typing import Dict
 
 from rag.memory_chain import get_conversational_rag_chain
-from rag.streaming_chain import get_streaming_rag_chain
-from db.mongo import save_chat
+from rag.streaming_chain import get_streaming_rag_chain, stream_rag_response
+from db.mongo import save_chat, get_chat_history
+from auth.dependencies import get_current_user_id
 
 # -------------------------------------------------
 # Router
 # -------------------------------------------------
 router = APIRouter(prefix="/query", tags=["Query"])
 
-# -------------------------------------------------
-# AUTH PLACEHOLDER (replace later with JWT)
-# -------------------------------------------------
-def get_current_user_id():
-    return "test-user-id"
 
-# -------------------------------------------------
-# In-memory chain store (per user session)
-# NOTE: Later you’ll replace this with Redis or DB
-# -------------------------------------------------
-user_memory_chains: Dict[str, object] = {}
 
 # -------------------------------------------------
 # NORMAL QUERY (WITH MEMORY)
@@ -32,17 +23,28 @@ def query_documents(
     user_id: str = Depends(get_current_user_id)
 ):
     """
-    Handles conversational RAG queries (non-streaming).
+    Stateless conversational RAG query.
+    Conversation history is passed explicitly.
     """
 
-    # Create chain once per user session
-    if user_id not in user_memory_chains:
-        user_memory_chains[user_id] = get_conversational_rag_chain(user_id)
+    # 1️⃣ Build stateless chain (NO MEMORY INSIDE)
+    chain = get_conversational_rag_chain(user_id)
 
-    chain = user_memory_chains[user_id]
+    # 2️⃣ Fetch previous chat history from MongoDB
+    previous_chats = get_chat_history(user_id, limit=6)
 
+    # 3️⃣ Convert DB records → LangChain format
+    chat_history = []
+    for chat in reversed(previous_chats):
+        chat_history.append(("human", chat["question"]))
+        chat_history.append(("ai", chat["answer"]))
+
+    # 4️⃣ Call chain WITH chat_history
     try:
-        response = chain({"question": question})
+        response = chain({
+            "question": question,
+            "chat_history": chat_history
+        })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -56,7 +58,7 @@ def query_documents(
         for doc in response.get("source_documents", [])
     ]
 
-    # Save chat to MongoDB
+    # 5️⃣ Persist this turn
     save_chat(
         user_id=user_id,
         question=question,
@@ -68,7 +70,6 @@ def query_documents(
         "answer": answer,
         "sources": sources
     }
-
 # -------------------------------------------------
 # STREAMING QUERY (NO MEMORY)
 # -------------------------------------------------
@@ -80,19 +81,8 @@ def query_documents_stream(
     """
     Streams answer token-by-token using Gemini.
     """
-
-    chain = get_streaming_rag_chain(user_id)
-
-    def event_generator():
-        try:
-            # Streaming is handled internally by LangChain
-            result = chain.run(question)
-            yield result
-        except Exception as e:
-            yield f"\n[ERROR]: {str(e)}"
-
     return StreamingResponse(
-        event_generator(),
+        stream_rag_response(user_id, question),
         media_type="text/event-stream"
     )
 

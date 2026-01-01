@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from rag.streaming_chain import get_streaming_rag_chain
+from auth.dependencies import get_current_user_id
 
 router = APIRouter(prefix="/query", tags=["Query"])
 
-def get_current_user_id():
-    return "test-user-id"
 
 @router.post("/stream")
 def query_stream(

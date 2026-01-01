@@ -9,15 +9,8 @@ def parallel_ingest_document(
     max_workers: int = 4
 ):
     """
-    Ingest pages in parallel (safe for FAISS append).
+    Wrapper for ingestion. 
+    NOTE: Parallel ingestion is disabled because FAISS file persistence is not thread-safe.
+    Concurrent writes to the same 'faiss_index/{user_id}' folder result in data loss.
     """
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for page in extracted_pages:
-            executor.submit(
-                ingest_new_document,
-                user_id,
-                file_id,
-                filename,
-                [page]  # single-page ingestion
-            )
+    ingest_new_document(user_id, file_id, filename, extracted_pages)

@@ -26,7 +26,7 @@ def rebuild_user_faiss_index(user_id: str):
         for c in chunks
     ]
 
-    embeddings = get_embeddings()
+    embeddings = get_embedding_model()
     vectorstore = FAISS.from_texts(texts, embeddings, metadatas)
 
     vectorstore.save_local(f"faiss_index/{user_id}")

@@ -1,11 +1,26 @@
+# filepath: /home/susan/Desktop/DocTalk/server/requirements.txt
 fastapi
 uvicorn
 langchain
-langchain_community
+langchain-classic
+langchain-core
+langchain-community
+langchain-text-splitters
 python-multipart
-sentence-transformers
 faiss-cpu
-pymongo 
+pymongo
 python-dotenv
-pymongo[srv]==3.12
-langchain_google_genai
+langchain-google-genai
+certifi
+pydantic>=2.0
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+pypdf
+docx2txt
+langchain-huggingface
+
+# CPU-only PyTorch (no NVIDIA CUDA)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+sentence-transformers

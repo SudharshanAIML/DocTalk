@@ -1,4 +1,3 @@
-from fastapi import FastAPI, HTTPException
 from fastapi import FastAPI
 
 from middleware.cors import add_cors_middleware
@@ -19,10 +18,14 @@ add_cors_middleware(app)
 app.middleware("http")(error_handling_middleware)
 app.middleware("http")(logging_middleware)
 app.middleware("http")(timing_middleware)
+from api.auth import router as auth_router
+
 
 # ----------------------------
 # Routers
 # ----------------------------
+
+app.include_router(auth_router)
 app.include_router(documents_router)
 app.include_router(query_router)
 

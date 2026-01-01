@@ -1,5 +1,5 @@
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 from rag.vectorstore import get_user_vectorstore, save_user_vectorstore
 from db.mongo import insert_chunk
 
@@ -21,7 +21,7 @@ def ingest_new_document(
         chunk_overlap=100
     )
 
-    vectorstore = load_or_create_vectorstore(user_id)
+    vectorstore = get_user_vectorstore(user_id)
 
     for page in extracted_pages:
         docs = splitter.create_documents(
@@ -34,17 +34,20 @@ def ingest_new_document(
             }]
         )
 
+        # Get the current count before adding new docs
+        start_index = vectorstore.index.ntotal
+        
         # 🔥 ONLY new docs are added
         vectorstore.add_documents(docs)
 
         # Store chunk metadata in MongoDB
-        for _ in docs:
+        for i, doc in enumerate(docs):
             insert_chunk(
                 user_id=user_id,
                 file_id=file_id,
                 page_number=page["page"],
-                text_preview=page["text"],
-                faiss_index_id=vectorstore.index.ntotal - 1
+                text_preview=doc.page_content,
+                faiss_index_id=start_index + i
             )
 
-    save_vectorstore(vectorstore, user_id)
+    save_user_vectorstore(vectorstore, user_id)

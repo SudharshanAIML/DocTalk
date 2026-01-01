@@ -5,6 +5,7 @@ import shutil
 import uuid
 
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
+from auth.dependencies import get_current_user_id
 
 from db.mongo import (
     insert_document,
@@ -21,18 +22,6 @@ from rag.parallel_ingest import parallel_ingest_document
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
-
-
-# AUTH PLACEHOLDER (replace with JWT later)
-
-def get_current_user_id():
-    """
-    TEMP: Replace with JWT-based auth later
-    """
-    return "test-user-id"
-
-
-
 # UTILS
 
 UPLOAD_DIR = "data/uploads"
@@ -45,11 +34,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def load_document_with_langchain(file_path: str, filename: str):
     """
     Uses LangChain loaders to extract text.
-    Returns list of:
-    [{"page": int, "text": str}]
+    Returns tuple of (pages, file_type):
+    pages = [{"page": int, "text": str}]
     """
-
-    if filename.endswith(".pdf"):
+    filename_lower = filename.lower()
+    
+    if filename_lower.endswith(".pdf"):
         loader = PyPDFLoader(file_path)
         docs = loader.load()
         file_type = "pdf"
@@ -62,23 +52,26 @@ def load_document_with_langchain(file_path: str, filename: str):
             for i, doc in enumerate(docs)
         ]
 
-    elif filename.endswith(".docx"):
+    elif filename_lower.endswith(".docx"):
         loader = Docx2txtLoader(file_path)
         docs = loader.load()
         file_type = "docx"
 
         # DOCX usually has no pages
-        pages = [
-            {
-                "page": 1,
-                "text": docs[0].page_content
-            }
-        ]
+        if docs:
+            pages = [
+                {
+                    "page": 1,
+                    "text": docs[0].page_content
+                }
+            ]
+        else:
+            pages = [{"page": 1, "text": ""}]
 
     else:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type"
+            detail="Unsupported file type. Only PDF and DOCX files are supported."
         )
 
     return pages, file_type
@@ -95,7 +88,8 @@ async def upload_documents(
     uploaded_files = []
 
     for file in files:
-        if not file.filename.endswith((".pdf", ".docx")):
+        filename_lower = file.filename.lower()
+        if not (filename_lower.endswith(".pdf") or filename_lower.endswith(".docx")):
             raise HTTPException(
                 status_code=400,
                 detail="Only PDF and DOCX files are supported"
@@ -108,8 +102,17 @@ async def upload_documents(
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        # 🔥 Load using LangChain
-        pages, file_type = load_document_with_langchain(file_path, file.filename)
+        try:
+            # 🔥 Load using LangChain
+            pages, file_type = load_document_with_langchain(file_path, file.filename)
+        except Exception as e:
+            # Clean up file on error
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to process document: {str(e)}"
+            )
 
         # Save document metadata
         doc = insert_document(
