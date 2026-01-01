@@ -14,7 +14,7 @@ from db.mongo import (
 )
 from rag.ingest import ingest_new_document
 from rag.reindex import rebuild_user_faiss_index
-
+from rag.parallel_ingest import parallel_ingest_document
 
 
 # Router
@@ -120,7 +120,7 @@ async def upload_documents(
         )
 
         # 🔥 Incremental ingestion (LangChain + FAISS)
-        ingest_new_document(
+        parallel_ingest_document(
             user_id=user_id,
             file_id=doc["file_id"],
             filename=file.filename,
