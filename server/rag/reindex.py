@@ -1,10 +1,10 @@
 import os
 import shutil
 from langchain_community.vectorstores import FAISS
-from rag.vectorstore import get_embeddings
+from rag.vectorstore import get_embedding_model
 from db.mongo import chunks_col
 
-def rebuild_user_index(user_id: str):
+def rebuild_user_faiss_index(user_id: str):
     """
     Rebuild FAISS index from MongoDB chunks (after deletion).
     """

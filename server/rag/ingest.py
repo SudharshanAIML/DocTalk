@@ -1,6 +1,6 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
-from rag.vectorstore import load_or_create_vectorstore, save_vectorstore
+from rag.vectorstore import get_user_vectorstore, save_user_vectorstore
 from db.mongo import insert_chunk
 
 def ingest_new_document(

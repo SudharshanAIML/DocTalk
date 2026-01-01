@@ -2,6 +2,9 @@ fastapi
 uvicorn
 langchain
 langchain_community
+python-multipart
+sentence-transformers
+faiss-cpu
 pymongo 
 python-dotenv
 pymongo[srv]==3.12
