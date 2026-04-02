@@ -84,14 +84,15 @@ Question: {question}
 Answer (comprehensive, citing sources from both documents and web):"""
 
 
-def get_conversational_rag_chain(user_id: str, web_context: str = ""):
+def get_conversational_rag_chain(user_id: str, web_context: str = "", filter_document_ids=None):
     """
-    Create a conversational RAG chain that searches across ALL user documents.
+    Create a conversational RAG chain that searches across user documents.
     Uses custom prompts to better handle personal queries like "tell me about myself".
     
     Args:
         user_id: User identifier
         web_context: Optional web search context to include
+        filter_document_ids: Optional list of document IDs to restrict search to
     """
     llm = ChatGroq(
         model=MODEL,
@@ -99,8 +100,8 @@ def get_conversational_rag_chain(user_id: str, web_context: str = ""):
         groq_api_key=GROQ_API_KEY
     )
 
-    # Get retriever with k=8 to search across more documents
-    retriever = get_retriever(user_id, k=8)
+    # Get retriever; pass filter_document_ids to restrict to selected docs
+    retriever = get_retriever(user_id, k=8, filter_document_ids=filter_document_ids)
     
     # Choose prompt based on whether web context is provided
     if web_context:

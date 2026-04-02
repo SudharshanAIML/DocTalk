@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
-import { queryAPI } from '../api/index';
+import { queryAPI, documentsAPI } from '../api/index';
 import ThemeToggle from './ThemeToggle';
 import { Brain } from 'lucide-react';
 
@@ -13,8 +13,25 @@ const ChatLayout = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [searchMode, setSearchMode] = useState('hybrid'); // docs_only, hybrid, web_only
   const [conversationId, setConversationId] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [activeFilters, setActiveFilters] = useState(null);
 
-  const handleSendMessage = async (message, files) => {
+  // Fetch user documents for filter panel
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const response = await documentsAPI.list();
+        // Backend returns a plain array directly
+        const docs = Array.isArray(response.data) ? response.data : (response.data?.files || []);
+        setDocuments(docs);
+      } catch (error) {
+        console.error('Failed to fetch documents:', error);
+      }
+    };
+    fetchDocuments();
+  }, []);
+
+  const handleSendMessage = async (message, files, filters) => {
     // Add user message
     const userMessage = {
       id: Date.now(),
@@ -35,13 +52,13 @@ const ChatLayout = () => {
         max_web_results: 5
       };
 
-      // If we have files, upload them first (optional - depends on your API)
-      // For now, we'll just query with the message
+      // Use filters passed from ChatInput (from FilterPanel)
+      const queryFilters = filters || activeFilters;
 
-      // Call the query API with search context
+      // Call the query API with search context and filters
       const response = await queryAPI.query(
         message,
-        null, // filters
+        queryFilters,   // pass real filters here
         conversationId,
         searchContext
       );
@@ -152,6 +169,9 @@ const ChatLayout = () => {
               disabled={isStreaming}
               searchMode={searchMode}
               onSearchModeChange={handleSearchModeChange}
+              documents={documents}
+              activeFilters={activeFilters}
+              onFiltersChange={setActiveFilters}
             />
           </div>
         </div>

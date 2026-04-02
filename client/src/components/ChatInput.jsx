@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SearchModeDropdown } from './SearchMode';
+import FilterPanel from './FilterPanel';
 
 const ChatInput = ({ 
   onSend, 
   disabled, 
   searchMode = 'docs_only',
-  onSearchModeChange = () => {}
+  onSearchModeChange = () => {},
+  documents = [],
+  activeFilters = null,
+  onFiltersChange = () => {}
 }) => {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState([]);
@@ -25,7 +29,8 @@ const ChatInput = ({
     if (!message.trim() && files.length === 0) return;
     if (disabled) return;
 
-    onSend(message, files);
+    // Pass message, files, AND the current active filters
+    onSend(message, files, activeFilters);
     setMessage('');
     setFiles([]);
     
@@ -51,6 +56,9 @@ const ChatInput = ({
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Count how many documents are currently filtered
+  const filteredDocCount = activeFilters?.document_ids?.length || 0;
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
       {files.length > 0 && (
@@ -75,6 +83,25 @@ const ChatInput = ({
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Active filter badge */}
+      {filteredDocCount > 0 && (
+        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg-tertiary)] px-3 py-1.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="text-[var(--accent-primary)]">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span className="text-xs font-medium text-[var(--accent-primary)]">
+            Searching {filteredDocCount} selected document{filteredDocCount > 1 ? 's' : ''} only
+          </span>
+          <button
+            type="button"
+            onClick={() => onFiltersChange(null)}
+            className="ml-auto text-xs text-[var(--text-tertiary)] hover:text-[var(--error)] transition-colors"
+          >
+            Clear
+          </button>
         </div>
       )}
 
@@ -112,10 +139,17 @@ const ChatInput = ({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about your documents..."
+          placeholder={filteredDocCount > 0 ? `Ask about ${filteredDocCount} selected document${filteredDocCount > 1 ? 's' : ''}...` : "Ask about your documents..."}
           className="custom-scrollbar max-h-[200px] flex-1 resize-none overflow-y-auto border-none bg-transparent text-base leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-placeholder)] disabled:cursor-not-allowed disabled:opacity-60"
           disabled={disabled}
           rows={1}
+        />
+
+        {/* Filter Panel button */}
+        <FilterPanel
+          documents={documents}
+          onFiltersChange={onFiltersChange}
+          activeFilters={activeFilters}
         />
 
         <button
