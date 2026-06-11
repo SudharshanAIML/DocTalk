@@ -42,6 +42,26 @@ def login(data: LoginRequest):
     return {"access_token": token, "token_type": "bearer"}
 
 
+@router.post("/demo")
+def demo_login():
+    """Login with a temporary demo account (auto-created if not exists)"""
+    demo_email = "demo@doctalk.app"
+    demo_password = "Demo@12345"
+
+    user = users_col.find_one({"email": demo_email})
+    if not user:
+        user = {
+            "user_id": str(uuid.uuid4()),
+            "email": demo_email,
+            "password": hash_password(demo_password),
+            "is_demo": True,
+        }
+        users_col.insert_one(user)
+
+    token = create_access_token({"user_id": user["user_id"]})
+    return {"access_token": token, "token_type": "bearer"}
+
+
 @router.post("/logout")
 def logout(user: dict = Depends(get_current_user)):
     """

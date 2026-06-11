@@ -16,8 +16,13 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, [token]);
 
-  const login = async (email, password) => {
-    const response = await authAPI.login(email, password);
+  const login = async (email, password, isDemo = false) => {
+    let response;
+    if (isDemo) {
+      response = await authAPI.demoLogin();
+    } else {
+      response = await authAPI.login(email, password);
+    }
     const { access_token } = response.data;
     localStorage.setItem('token', access_token);
     setToken(access_token);
