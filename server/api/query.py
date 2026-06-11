@@ -178,10 +178,20 @@ async def query_documents(
             logger.error(f"Web search failed: {e}")
             # Continue without web results
 
-    # 1️⃣ Build stateless chain (NO MEMORY INSIDE)
-    chain = get_conversational_rag_chain(user_id, web_context=web_context)
+    # 1️⃣ Extract document filter IDs from request filters (if provided)
+    filter_document_ids = None
+    if request.filters and request.filters.document_ids:
+        filter_document_ids = request.filters.document_ids
+        logger.info(f"Document filter active: restricting to {filter_document_ids}")
 
-    # 2️⃣ Fetch previous chat history from MongoDB
+    # 2️⃣ Build stateless chain with optional document filter
+    chain = get_conversational_rag_chain(
+        user_id,
+        web_context=web_context,
+        filter_document_ids=filter_document_ids
+    )
+
+    # 3️⃣ Fetch previous chat history from MongoDB
     previous_chats = get_chat_history(user_id, limit=6)
 
     # 3️⃣ Convert DB records → LangChain format
