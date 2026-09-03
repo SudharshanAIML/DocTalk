@@ -1,7 +1,7 @@
 from langchain_groq import ChatGroq
 from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_core.prompts import PromptTemplate
-from rag.retriever import get_retriever
+from rag.hybrid_retriever import get_hybrid_retriever
 import os
 from dotenv import load_dotenv
 import logging
@@ -9,7 +9,7 @@ import logging
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+MODEL = os.getenv("GROQ_MODEL", "groq/compound")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Custom prompt to rephrase questions for better document retrieval
@@ -100,8 +100,8 @@ def get_conversational_rag_chain(user_id: str, web_context: str = "", filter_doc
         groq_api_key=GROQ_API_KEY
     )
 
-    # Get retriever; pass filter_document_ids to restrict to selected docs
-    retriever = get_retriever(user_id, k=8, filter_document_ids=filter_document_ids)
+    # Get retriever (hybrid: vector + knowledge graph); pass filter_document_ids to restrict to selected docs
+    retriever = get_hybrid_retriever(user_id, k=8, filter_document_ids=filter_document_ids)
     
     # Choose prompt based on whether web context is provided
     if web_context:

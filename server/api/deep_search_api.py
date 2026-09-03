@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 import time
 
 from auth.dependencies import get_current_user_id
+from db.neo4j_client import ping_neo4j
 from rag.deep_search import (
     DeepSearchEngine, DeepSearchConfig, SearchDepth,
     get_deep_search_engine, deep_search
@@ -387,14 +388,14 @@ async def deep_search_health():
         # Check components
         has_analyzer = engine.query_analyzer is not None
         has_reasoner = engine.semantic_reasoner is not None
-        has_graph = engine.knowledge_graph is not None
-        
+        has_graph = ping_neo4j()
+
         return {
             "status": "healthy" if all([has_analyzer, has_reasoner, has_graph]) else "degraded",
             "components": {
                 "query_analyzer": "ok" if has_analyzer else "missing",
                 "semantic_reasoner": "ok" if has_reasoner else "missing",
-                "knowledge_graph": "ok" if has_graph else "missing"
+                "knowledge_graph": "ok" if has_graph else "unreachable (falls back to vector-only search)"
             }
         }
     except Exception as e:

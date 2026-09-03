@@ -10,7 +10,6 @@ dependencies = [
     "uvicorn[standard]",
     "python-multipart",
     "pydantic>=2.0",
-    
     # LangChain ecosystem
     "langchain",
     "langchain-classic",
@@ -20,30 +19,25 @@ dependencies = [
     "langchain-huggingface",
     "langchain-groq",
     "langchain-google-genai",
-    
     # Database
     "pymongo",
     "faiss-cpu",
-    
+    "neo4j",
     # Authentication
     "python-jose[cryptography]",
     "passlib[bcrypt]",
     "bcrypt==4.0.1",
-    
     # Document Processing
     "pypdf",
     "docx2txt",
-    
     # Web Search (lxml for fast HTML parsing)
     "httpx",
     "lxml",
     "lxml-html-clean",
     "cssselect",
-    
     # Utilities
     "python-dotenv",
     "certifi",
-    
     # ML/Embeddings
     "torch",
     "sentence-transformers",

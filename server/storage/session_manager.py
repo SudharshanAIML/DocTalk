@@ -311,8 +311,12 @@ class SessionManager:
             chunks_col.delete_many({"user_id": user_id})
             chat_history_col.delete_many({"user_id": user_id})
             logger.info(f"Removed from database: {user_id}")
-            
-            # 4. Delete uploaded files (if any local files exist)
+
+            # 4. Delete from the knowledge graph
+            from rag import graph_store
+            graph_store.delete_user_graph(user_id)
+
+            # 5. Delete uploaded files (if any local files exist)
             upload_dir = os.getenv("UPLOAD_DIR", "data/uploads")
             if os.path.exists(upload_dir):
                 import glob
@@ -332,23 +336,18 @@ class SessionManager:
     
     def cleanup_expired_sessions(self):
         """
-        Clean up all expired sessions.
+        Evict expired sessions from the in-memory cache only.
         Called periodically by the background thread.
+
+        This does NOT delete anything from cloud storage or the database —
+        a user's documents/chunks/chat history must persist regardless of
+        inactivity. Eviction just frees memory; get_vectorstore() reloads
+        the index from GridFS on next access.
         """
         try:
-            logger.info("Running expired session cleanup...")
-            
-            # Get all user IDs with FAISS indices
-            user_ids = CloudFAISSStorage.get_all_user_ids()
-            cleaned_count = 0
-            
-            for user_id in user_ids:
-                if self.is_session_expired(user_id):
-                    logger.info(f"Session expired for user: {user_id}")
-                    if self.cleanup_user_session(user_id):
-                        cleaned_count += 1
-            
-            # Also clean memory cache
+            logger.info("Running expired session cache eviction...")
+
+            # Clean memory cache
             with self._cache_lock:
                 expired_in_cache = []
                 for user_id, session in self._cache.items():
@@ -359,9 +358,9 @@ class SessionManager:
                 for user_id in expired_in_cache:
                     del self._cache[user_id]
                     logger.info(f"Removed expired session from cache: {user_id}")
-            
-            logger.info(f"Cleanup completed. Cleaned {cleaned_count} expired sessions.")
-            
+
+            logger.info(f"Cache eviction completed. Evicted {len(expired_in_cache)} expired sessions.")
+
         except Exception as e:
             logger.error(f"Error in cleanup_expired_sessions: {e}")
     

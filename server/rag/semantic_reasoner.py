@@ -167,7 +167,7 @@ Provide your reasoning, then a clear answer."""
         anthropic_api_key: Optional[str] = None,
         groq_api_key: Optional[str] = None,
         model: str = "claude-sonnet-4-20250514",
-        fallback_model: str = "llama-3.3-70b-versatile",
+        fallback_model: str = os.getenv("GROQ_MODEL", "groq/compound"),
         max_tokens: int = 4096,
         temperature: float = 0.3
     ):

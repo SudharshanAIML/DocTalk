@@ -5,7 +5,6 @@ from db.mongo import users_col
 from auth.auth_utils import hash_password, verify_password
 from auth.jwt_handler import create_access_token
 from auth.dependencies import get_current_user
-from storage.session_manager import cleanup_user_session
 import uuid
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -45,19 +44,7 @@ def login(data: LoginRequest):
 @router.post("/logout")
 def logout(user: dict = Depends(get_current_user)):
     """
-    Logout user and clean up their session.
-    This will delete:
-    - FAISS index from cloud storage
-    - Documents metadata from database
-    - Chunks metadata from database
-    - Chat history from database
+    Logout user. Sessions are stateless JWTs, so there is nothing to
+    invalidate server-side — the client discards its token.
     """
-    user_id = user["user_id"]
-    
-    # Clean up all user data
-    success = cleanup_user_session(user_id)
-    
-    if success:
-        return {"message": "Logged out successfully. All session data has been cleaned up."}
-    else:
-        raise HTTPException(status_code=500, detail="Error during logout cleanup")
+    return {"message": "Logged out successfully."}

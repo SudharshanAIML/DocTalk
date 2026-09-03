@@ -116,8 +116,6 @@ class EnhancedRetriever(BaseRetriever):
                 score = 0
                 if 'resume' in filename or 'cv' in filename or 'profile' in filename:
                     score += 100
-                if any(word in filename for word in ['stripe', 'sudharshan']):
-                    score += 50
                 personal_keywords = ['skills', 'education', 'experience', 'projects', 
                                    'programming', 'languages', 'achievements', 'university',
                                    'leetcode', 'codechef', 'github']

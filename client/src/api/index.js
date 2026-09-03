@@ -27,10 +27,13 @@ export const authAPI = {
 
 // Documents APIs
 export const documentsAPI = {
-  upload: (file, onProgress) => {
+  upload: (file, category, onProgress) => {
     const formData = new FormData();
     formData.append('file', file);
-    
+    if (category) {
+      formData.append('category', category);
+    }
+
     return api.post('/documents/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

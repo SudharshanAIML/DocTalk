@@ -6,11 +6,12 @@ def parallel_ingest_document(
     file_id: str,
     filename: str,
     extracted_pages: list,
+    file_type: str = "unknown",
     max_workers: int = 4
 ):
     """
-    Wrapper for ingestion. 
+    Wrapper for ingestion.
     NOTE: Parallel ingestion is disabled because FAISS file persistence is not thread-safe.
     Concurrent writes to the same 'faiss_index/{user_id}' folder result in data loss.
     """
-    ingest_new_document(user_id, file_id, filename, extracted_pages)
+    ingest_new_document(user_id, file_id, filename, extracted_pages, file_type=file_type)

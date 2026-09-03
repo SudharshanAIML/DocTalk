@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from db.mongo import init_db
+from db.neo4j_client import ensure_graph_schema
 from middleware.cors import add_cors_middleware
 from middleware.logging import logging_middleware
 from middleware.timing import timing_middleware
@@ -13,6 +15,12 @@ from api.deep_search_api import router as deep_search_router
 from api.perplexica_api import router as perplexica_router
 
 app = FastAPI(title="DocTalk API")
+
+# ----------------------------
+# Database indexes / knowledge graph schema
+# ----------------------------
+init_db()
+ensure_graph_schema()  # no-ops if Neo4j isn't configured/reachable
 
 # ----------------------------
 # Middleware registration

@@ -35,9 +35,8 @@ chunks_col = db["chunks"]
 chat_history_col = db["chat_history"]
 faiss_metadata_col = db["faiss_metadata"]  # For FAISS index metadata
 
-# Deep Search Collections (Knowledge Graph)
-document_concepts_col = db["document_concepts"]
-concept_relationships_col = db["concept_relationships"]
+# Deep Search Collections
+# (the concept/relationship graph itself now lives in Neo4j — see rag/graph_store.py)
 reasoning_cache_col = db["reasoning_cache"]
 deep_search_history_col = db["deep_search_history"]
 
@@ -62,41 +61,6 @@ def init_db():
     chat_history_col.create_index([
         ("user_id", ASCENDING),
         ("timestamp", DESCENDING)
-    ])
-    
-    # Deep Search / Knowledge Graph indexes
-    document_concepts_col.create_index([
-        ("user_id", ASCENDING),
-        ("concept_id", ASCENDING)
-    ], unique=True)
-    document_concepts_col.create_index([
-        ("user_id", ASCENDING),
-        ("normalized_name", ASCENDING)
-    ])
-    document_concepts_col.create_index([
-        ("user_id", ASCENDING),
-        ("document_ids", ASCENDING)
-    ])
-    document_concepts_col.create_index([
-        ("user_id", ASCENDING),
-        ("importance", DESCENDING)
-    ])
-    
-    concept_relationships_col.create_index([
-        ("user_id", ASCENDING),
-        ("relationship_id", ASCENDING)
-    ], unique=True)
-    concept_relationships_col.create_index([
-        ("user_id", ASCENDING),
-        ("source_concept_id", ASCENDING)
-    ])
-    concept_relationships_col.create_index([
-        ("user_id", ASCENDING),
-        ("target_concept_id", ASCENDING)
-    ])
-    concept_relationships_col.create_index([
-        ("user_id", ASCENDING),
-        ("relationship_type", ASCENDING)
     ])
     
     reasoning_cache_col.create_index([
@@ -154,7 +118,8 @@ def insert_document(
     user_id: str,
     filename: str,
     file_type: str,
-    num_pages: int
+    num_pages: int,
+    category: str | None = None
 ) -> dict:
     """
     Insert document metadata.
@@ -165,6 +130,7 @@ def insert_document(
         "filename": filename,
         "file_type": file_type,
         "num_pages": num_pages,
+        "category": category,
         "uploaded_at": datetime.utcnow(),
         "status": "indexed"
     }
@@ -359,10 +325,11 @@ def delete_user_data(user_id: str) -> None:
     chunks_col.delete_many({"user_id": user_id})
     chat_history_col.delete_many({"user_id": user_id})
     deep_search_history_col.delete_many({"user_id": user_id})
-    document_concepts_col.delete_many({"user_id": user_id})
-    concept_relationships_col.delete_many({"user_id": user_id})
     reasoning_cache_col.delete_many({"user_id": user_id})
     users_col.delete_one({"user_id": user_id})
+
+    from rag import graph_store
+    graph_store.delete_user_graph(user_id)
 
 
 

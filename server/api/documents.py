@@ -1,5 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from typing import List
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from typing import List, Optional
 import os
 import shutil
 import uuid
@@ -16,6 +16,7 @@ from db.mongo import (
 from rag.ingest import ingest_new_document
 from rag.reindex import rebuild_user_faiss_index
 from rag.parallel_ingest import parallel_ingest_document
+from rag import graph_store
 
 
 # Router
@@ -83,6 +84,7 @@ def load_document_with_langchain(file_path: str, filename: str):
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
+    category: Optional[str] = Form(None),
     user_id: str = Depends(get_current_user_id)
 ):
     filename_lower = file.filename.lower()
@@ -116,15 +118,17 @@ async def upload_document(
         user_id=user_id,
         filename=file.filename,
         file_type=file_type,
-        num_pages=len(pages)
+        num_pages=len(pages),
+        category=category
     )
 
-    # 🔥 Incremental ingestion (LangChain + FAISS)
+    # 🔥 Incremental ingestion (LangChain + FAISS + knowledge graph)
     parallel_ingest_document(
         user_id=user_id,
         file_id=doc["file_id"],
         filename=file.filename,
-        extracted_pages=pages
+        extracted_pages=pages,
+        file_type=file_type
     )
 
     return {
@@ -152,6 +156,7 @@ def delete_user_document(
 ):
     delete_document(user_id, file_id)
     delete_chunks_by_file(user_id, file_id)
+    graph_store.delete_document_subgraph(user_id, file_id)
 
     # 🔥 Rebuild FAISS index (only on delete)
     rebuild_user_faiss_index(user_id)

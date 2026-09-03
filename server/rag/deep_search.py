@@ -30,14 +30,13 @@ from rag.semantic_reasoner import (
     SemanticReasoner, ReasoningChain, ReasoningDepth,
     get_semantic_reasoner
 )
-from rag.knowledge_graph import (
-    KnowledgeGraph, GraphQuery, get_knowledge_graph
-)
+from rag import graph_store
+from rag.graph_store import GraphQuery
 from rag.result_synthesizer import (
     ResultRanker, ResultSynthesizer, RankedResult, SynthesizedAnswer,
     rank_results, synthesize_answer
 )
-from rag.retriever import get_retriever
+from rag.hybrid_retriever import get_hybrid_retriever
 from db.mongo import save_deep_search
 from rag.vectorstore import get_user_vectorstore
 
@@ -121,23 +120,20 @@ class DeepSearchEngine:
         self,
         query_analyzer: Optional[QueryAnalyzer] = None,
         semantic_reasoner: Optional[SemanticReasoner] = None,
-        knowledge_graph: Optional[KnowledgeGraph] = None,
         result_ranker: Optional[ResultRanker] = None,
         result_synthesizer: Optional[ResultSynthesizer] = None
     ):
         """
         Initialize the deep search engine.
-        
+
         Args:
             query_analyzer: Query analyzer instance
             semantic_reasoner: Semantic reasoner instance
-            knowledge_graph: Knowledge graph instance
             result_ranker: Result ranker instance
             result_synthesizer: Result synthesizer instance
         """
         self.query_analyzer = query_analyzer or get_query_analyzer()
         self.semantic_reasoner = semantic_reasoner or get_semantic_reasoner()
-        self.knowledge_graph = knowledge_graph or get_knowledge_graph()
         self.result_ranker = result_ranker or ResultRanker()
         self.result_synthesizer = result_synthesizer or ResultSynthesizer(self.result_ranker)
         
@@ -319,8 +315,8 @@ class DeepSearchEngine:
         base_k = config.max_chunks
         total_k = base_k * k_multiplier
         
-        # Get retriever
-        retriever = get_retriever(user_id, k=total_k)
+        # Get retriever (hybrid: vector + knowledge graph)
+        retriever = get_hybrid_retriever(user_id, k=total_k)
         
         # Main query retrieval
         main_results = retriever.invoke(analyzed_query.original_query)
@@ -417,7 +413,7 @@ class DeepSearchEngine:
             
             # Store in knowledge graph for future use
             for rel in rels:
-                self.knowledge_graph.add_relationship(
+                graph_store.add_relationship(
                     user_id=user_id,
                     source_concept=rel.source,
                     target_concept=rel.target,
@@ -551,7 +547,7 @@ class DeepSearchEngine:
         """Get document/concept relationships from knowledge graph."""
         if concept:
             # Get relationships for a concept
-            rels = self.knowledge_graph.get_relationships(
+            rels = graph_store.get_relationships(
                 user_id=user_id,
                 concept=concept,
                 limit=limit
@@ -567,7 +563,7 @@ class DeepSearchEngine:
             ]
         elif document_id:
             # Get concepts for a document
-            concepts = self.knowledge_graph.get_document_concepts(user_id, document_id)
+            concepts = graph_store.get_document_concepts(user_id, document_id)
             return [
                 {
                     "concept": c.name,
@@ -578,7 +574,7 @@ class DeepSearchEngine:
             ]
         else:
             # Get all relationships
-            rels = self.knowledge_graph.get_relationships(user_id, limit=limit)
+            rels = graph_store.get_relationships(user_id, limit=limit)
             return [
                 {
                     "source": r.source_concept,
@@ -602,7 +598,7 @@ class DeepSearchEngine:
         # Find similar documents based on concepts
         similar_docs = []
         for concept in analyzed.concepts[:5]:
-            c = self.knowledge_graph.get_concept(user_id, concept)
+            c = graph_store.get_concept(user_id, concept)
             if c and c.document_ids:
                 similar_docs.extend(c.document_ids)
         
@@ -613,7 +609,7 @@ class DeepSearchEngine:
         doc_similarities = []
         if document_ids and len(document_ids) > 0:
             for doc_id in document_ids:
-                sims = self.knowledge_graph.find_similar_documents(user_id, doc_id)
+                sims = graph_store.find_similar_documents(user_id, doc_id)
                 for sim_id, score in sims:
                     doc_similarities.append({
                         "document_1": doc_id,
@@ -622,7 +618,7 @@ class DeepSearchEngine:
                     })
         
         # Query the graph
-        graph_result = self.knowledge_graph.query_graph(
+        graph_result = graph_store.query_graph(
             user_id=user_id,
             query=GraphQuery(concepts=analyzed.concepts[:5])
         )

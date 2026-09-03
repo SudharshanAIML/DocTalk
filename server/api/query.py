@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from pydantic import BaseModel
+from langchain_core.messages import HumanMessage, AIMessage
 import uuid
 import time
 import asyncio
 import logging
 
-from rag.memory_chain import get_conversational_rag_chain
+from rag.memory_chain import get_conversational_rag_chain, MODEL
 from rag.streaming_chain import get_streaming_rag_chain, stream_rag_response
-from db.mongo import save_chat, get_chat_history
 from auth.dependencies import get_current_user_id
 from storage.chat_storage import chat_storage
 
@@ -43,9 +43,9 @@ class QueryRequest(BaseModel):
     search_context: Optional[SearchContext] = None
 
 
-def _build_chat_history(previous_chats: List[Dict]) -> List[tuple[str, str]]:
-    """Normalize mixed chat-history schemas into LangChain chat history tuples."""
-    chat_history: List[tuple[str, str]] = []
+def _build_chat_history(previous_chats: List[Dict]) -> List[HumanMessage | AIMessage]:
+    """Normalize mixed chat-history schemas into LangChain BaseMessage objects."""
+    chat_history: List[HumanMessage | AIMessage] = []
 
     for chat in reversed(previous_chats):
         # Legacy schema: one record contains both question + answer
@@ -53,9 +53,9 @@ def _build_chat_history(previous_chats: List[Dict]) -> List[tuple[str, str]]:
             question = chat.get("question")
             answer = chat.get("answer")
             if question:
-                chat_history.append(("human", question))
+                chat_history.append(HumanMessage(content=question))
             if answer:
-                chat_history.append(("ai", answer))
+                chat_history.append(AIMessage(content=answer))
             continue
 
         # New schema: one record per message
@@ -68,9 +68,9 @@ def _build_chat_history(previous_chats: List[Dict]) -> List[tuple[str, str]]:
             continue
 
         if message_type == "user":
-            chat_history.append(("human", content))
+            chat_history.append(HumanMessage(content=content))
         elif message_type == "assistant":
-            chat_history.append(("ai", content))
+            chat_history.append(AIMessage(content=content))
 
     return chat_history
 
@@ -99,6 +99,18 @@ async def query_documents(
         is_new_conversation = True
         # Create conversation metadata
         chat_storage.create_conversation(user_id, question[:50])
+
+    # Fetch previous chat history from MongoDB for the current conversation
+    # Do this BEFORE saving the current user message to avoid including it in history
+    previous_chats = []
+    if not is_new_conversation:
+        previous_chats = list(chat_storage._get_collection().find(
+            {
+                "user_id": user_id,
+                "conversation_id": conversation_id,
+                "message_type": {"$in": ["user", "assistant"]}
+            }
+        ).sort("timestamp", -1).limit(6))
 
     # Save user message
     chat_storage.save_message(
@@ -191,9 +203,6 @@ async def query_documents(
         filter_document_ids=filter_document_ids
     )
 
-    # 3️⃣ Fetch previous chat history from MongoDB
-    previous_chats = get_chat_history(user_id, limit=6)
-
     # 3️⃣ Convert DB records → LangChain format
     chat_history = _build_chat_history(previous_chats)
 
@@ -247,7 +256,7 @@ async def query_documents(
         content=answer,
         sources=all_sources,
         response_metadata={
-            "model": "llama-3.3-70b-versatile",
+            "model": MODEL,
             "response_time_ms": response_time,
             "status": "success",
             "source_count": len(all_sources),
@@ -255,14 +264,6 @@ async def query_documents(
             "web_sources": len(web_sources),
             "web_search_enabled": bool(search_context and search_context.enable_web_search)
         }
-    )
-
-    # 5️⃣ Persist this turn (for legacy compatibility)
-    save_chat(
-        user_id=user_id,
-        question=question,
-        answer=answer,
-        sources=all_sources
     )
 
     return {

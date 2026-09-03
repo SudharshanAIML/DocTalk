@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from auth.dependencies import get_current_user_id
 from rag.retriever import get_retriever
-from mcp.mcp_client import get_mcp_client, format_hybrid_context
+from mcp.mcp_client import get_mcp_client
 from mcp.mcp_server import check_mcp_health
 from storage.search_cache import get_search_cache
 
