@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, Mail, Lock, FileText } from 'lucide-react';
+import { LogIn, Mail, Lock, FileText, Zap } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login() {
@@ -21,6 +21,19 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await login(null, null, true); // true = demo mode
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Demo login failed.');
     } finally {
       setLoading(false);
     }
@@ -123,6 +136,16 @@ export default function Login() {
                   <span>Sign in</span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={loading}
+              className="w-full py-2.5 sm:py-3 rounded-xl flex items-center justify-center space-x-2 font-semibold text-xs sm:text-sm transition-all duration-300 disabled:opacity-40 border border-[var(--border-light)] hover:border-[var(--accent-primary)] text-[var(--text-primary)]"
+            >
+              <Zap className="h-4 w-4 text-yellow-500" />
+              <span>Try Demo Account</span>
             </button>
           </form>
 
