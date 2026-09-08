@@ -9,7 +9,7 @@ import asyncio
 import logging
 
 from rag.memory_chain import get_conversational_rag_chain, MODEL
-from rag.streaming_chain import get_streaming_rag_chain, stream_rag_response
+from rag.streaming_chain import stream_rag_response
 from auth.dependencies import get_current_user_id
 from storage.chat_storage import chat_storage
 
